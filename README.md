@@ -2,8 +2,6 @@
 
 A collection of Kyverno policies, educational resources, and implementation patterns designed specifically for financial services environments.
 
-![Kyverno Logo](https://kyverno.io/images/kyverno.png)
-
 ## Overview
 
 This repository contains Kyverno policies and educational materials focused on implementing Kubernetes governance in financial services and regulated environments.
@@ -48,7 +46,6 @@ If you're new to Kyverno, here are the recommended steps to get started:
 
 ### Tutorials & Blog Posts
 * [Kyverno Blog](https://kyverno.io/blog/) - Latest features and use cases
-* [Kyverno YouTube Channel](https://www.youtube.com/channel/UC4CMFRX6YJDLa0r2nKuSrTQ) - Video tutorials and demos
 
 ## Contributing
 Contributions are welcome! Please feel free to submit a Pull Request.
