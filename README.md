@@ -52,6 +52,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 This repository is licensed under Creative Commons Attribution-ShareAlike 4.0 International License.
+[![License: CC BY-SA 4.0](https://img.shields.io/badge/License-CC%20BY--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-sa/4.0/)
 
 ## Acknowledgments
 This project builds upon the work of the Kyverno community and the Cloud Native Computing Foundation (CNCF).
