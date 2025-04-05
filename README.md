@@ -58,4 +58,4 @@ This repository is licensed under Creative Commons Attribution-ShareAlike 4.0 In
 ## Acknowledgments
 This project builds upon the work of the Kyverno community and the Cloud Native Computing Foundation (CNCF).
 
-Maintained by Christian Dussol, Engineering Manager at Finastra
+Maintained by [Christian Dussol](https://github.com/ChristianDussol), Engineering Manager at Finastra
