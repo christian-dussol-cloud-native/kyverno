@@ -200,7 +200,3 @@ kubectl get policyreport -n default -o yaml
 **Migration Guides:**
 - [Migrating from Ingress to Gateway API](https://gateway-api.sigs.k8s.io/guides/migrating-from-ingress/)
 - [Kyverno Documentation](https://kyverno.io/docs/)
-
-## 📝 License
-
-Apache License 2.0 - See LICENSE file for details
