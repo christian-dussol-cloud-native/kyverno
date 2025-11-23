@@ -1,0 +1,90 @@
+---
+# Test 1: Ingress using Ingress NGINX via ingressClassName
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-nginx-classname
+  namespace: default
+  labels:
+    app: test
+    test-type: ingress-nginx
+spec:
+  ingressClassName: nginx  # This will be detected/blocked
+  rules:
+  - host: test-nginx-class.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-service
+            port:
+              number: 80
+
+---
+# Test 2: Ingress using Ingress NGINX via annotation
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-nginx-annotation
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx  # This will be detected/blocked
+  labels:
+    app: test
+    test-type: ingress-nginx
+spec:
+  rules:
+  - host: test-nginx-annotation.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-service
+            port:
+              number: 80
+
+---
+# Test 3: Ingress with exception annotation (should be allowed)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-nginx-exception
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    migration.kyverno.io/allow-nginx: "true"  # Exception annotation
+    migration.reason: "Legacy system - Migration planned Q1 2025"
+  labels:
+    app: test
+    test-type: ingress-nginx-exception
+spec:
+  rules:
+  - host: test-nginx-exception.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-service
+            port:
+              number: 80
+
+---
+# Test service (required for Ingress resources)
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service
+  namespace: default
+spec:
+  selector:
+    app: test-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080

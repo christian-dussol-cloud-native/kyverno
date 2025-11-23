@@ -1,0 +1,79 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: block-new-ingress-nginx
+  annotations:
+    policies.kyverno.io/title: Block New Ingress NGINX Resources
+    policies.kyverno.io/category: Migration
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Ingress
+    policies.kyverno.io/description: >-
+      Prevents creation of new Ingress resources using the Ingress NGINX 
+      controller. Existing resources are unaffected. Exceptions can be made 
+      via the annotation 'migration.kyverno.io/allow-nginx: "true"' for 
+      approved legacy use cases.
+spec:
+  validationFailureAction: Enforce
+  background: false  # Only validate on CREATE operations
+  rules:
+    # Rule 1: Block ingressClassName: nginx
+    - name: block-nginx-ingress-class
+      match:
+        any:
+        - resources:
+            kinds:
+              - Ingress
+            operations:
+              - CREATE
+      exclude:
+        any:
+        - resources:
+            annotations:
+              migration.kyverno.io/allow-nginx: "true"
+      validate:
+        message: >-
+          Ingress NGINX is deprecated and will be retired in March 2026.
+          New resources using Ingress NGINX are not allowed.
+          
+          Please use Gateway API instead: https://gateway-api.sigs.k8s.io/
+          
+          For approved exceptions, add annotation:
+            migration.kyverno.io/allow-nginx: "true"
+            migration.reason: "Your justification here"
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.ingressClassName || '' }}"
+                operator: Equals
+                value: "nginx"
+    
+    # Rule 2: Block kubernetes.io/ingress.class: nginx annotation
+    - name: block-nginx-annotation
+      match:
+        any:
+        - resources:
+            kinds:
+              - Ingress
+            operations:
+              - CREATE
+      exclude:
+        any:
+        - resources:
+            annotations:
+              migration.kyverno.io/allow-nginx: "true"
+      validate:
+        message: >-
+          Ingress NGINX is deprecated and will be retired in March 2026.
+          New resources using Ingress NGINX are not allowed.
+          
+          Please use Gateway API instead: https://gateway-api.sigs.k8s.io/
+          
+          For approved exceptions, add annotation:
+            migration.kyverno.io/allow-nginx: "true"
+            migration.reason: "Your justification here"
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.metadata.annotations.\"kubernetes.io/ingress.class\" || '' }}"
+                operator: Equals
+                value: "nginx"

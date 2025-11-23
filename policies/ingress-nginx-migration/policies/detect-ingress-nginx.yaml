@@ -1,0 +1,55 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: detect-ingress-nginx
+  annotations:
+    policies.kyverno.io/title: Detect Ingress NGINX Usage
+    policies.kyverno.io/category: Migration
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Ingress
+    policies.kyverno.io/description: >-
+      Detects Ingress resources using Ingress NGINX controller (either via 
+      ingressClassName or annotation). Generates policy reports to provide 
+      visibility into Ingress NGINX usage across the cluster. This is a 
+      non-blocking audit policy for migration planning.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    # Rule 1: Detect ingressClassName: nginx
+    - name: detect-nginx-ingress-class
+      match:
+        any:
+        - resources:
+            kinds:
+              - Ingress
+      validate:
+        message: >-
+          Ingress NGINX detected via ingressClassName. 
+          Migration to Gateway API required before March 2026.
+          See: https://gateway-api.sigs.k8s.io/
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.ingressClassName || '' }}"
+                operator: Equals
+                value: "nginx"
+    
+    # Rule 2: Detect kubernetes.io/ingress.class annotation
+    - name: detect-nginx-annotation
+      match:
+        any:
+        - resources:
+            kinds:
+              - Ingress
+      validate:
+        message: >-
+          Ingress NGINX detected via annotation. 
+          Migration to Gateway API required before March 2026.
+          See: https://gateway-api.sigs.k8s.io/
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.metadata.annotations.\"kubernetes.io/ingress.class\" || '' }}"
+                operator: Equals
+                value: "nginx"

@@ -1,0 +1,78 @@
+---
+# Test: Ingress using alternative controller (Traefik)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-traefik
+  namespace: default
+  labels:
+    app: test
+    test-type: other-controller
+spec:
+  ingressClassName: traefik  # Alternative controller
+  rules:
+  - host: test-traefik.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-service-traefik
+            port:
+              number: 80
+
+---
+# Test: Ingress using HAProxy
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-haproxy
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: haproxy  # Alternative controller
+  labels:
+    app: test
+    test-type: other-controller
+spec:
+  rules:
+  - host: test-haproxy.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-service-haproxy
+            port:
+              number: 80
+
+---
+# Test service for Traefik
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-traefik
+  namespace: default
+spec:
+  selector:
+    app: test-app-traefik
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+
+---
+# Test service for HAProxy
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-haproxy
+  namespace: default
+spec:
+  selector:
+    app: test-app-haproxy
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
