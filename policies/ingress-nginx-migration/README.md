@@ -190,6 +190,7 @@ kubectl get policyreport -A
 
 # View detailed report for a namespace
 kubectl get policyreport -n default -o yaml
+```
 
 ## 📖 Resources
 
