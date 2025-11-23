@@ -6,12 +6,12 @@ metadata:
     policies.kyverno.io/title: Audit All Ingress Resources
     policies.kyverno.io/category: Migration
     policies.kyverno.io/severity: low
-    policies.kyverno.io/subject: Ingress, HTTPRoute
+    policies.kyverno.io/subject: Ingress
     policies.kyverno.io/description: >-
       Comprehensive audit of all ingress-related resources in the cluster.
       Categorizes resources as: nginx-ingress (requires migration), 
-      gateway-api (already migrated), or other-controller (alternative 
-      implementations). Provides complete visibility for migration planning.
+      or other-controller (alternative implementations). 
+      Provides complete visibility for migration planning.
 spec:
   validationFailureAction: Audit
   background: true
@@ -38,26 +38,7 @@ spec:
                 operator: Equals
                 value: "nginx"
     
-    # Rule 2: Identify Gateway API resources (HTTPRoute)
-    - name: categorize-gateway-api
-      match:
-        any:
-        - resources:
-            kinds:
-              - HTTPRoute
-      validate:
-        message: >-
-          Category: gateway-api | Status: Already Migrated | 
-          Resource: {{ request.object.metadata.namespace }}/{{ request.object.metadata.name }} |
-          Using Gateway API
-        deny:
-          conditions:
-            any:
-              - key: "{{ request.object.kind }}"
-                operator: Equals
-                value: "HTTPRoute"
-    
-    # Rule 3: Categorize other ingress controllers
+    # Rule 2: Categorize other ingress controllers
     - name: categorize-other-controllers
       match:
         any:
@@ -68,7 +49,7 @@ spec:
         message: >-
           Category: other-controller | Status: Alternative Implementation | 
           Resource: {{ request.object.metadata.namespace }}/{{ request.object.metadata.name }} |
-          Controller: {{ request.object.spec.ingressClassName || request.object.metadata.annotations.\"kubernetes.io/ingress.class\" || 'default' }}
+          Controller: {{ request.object.spec.ingressClassName || 'annotation-based' }}
         deny:
           conditions:
             any:

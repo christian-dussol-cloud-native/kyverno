@@ -6,17 +6,19 @@ metadata:
     policies.kyverno.io/title: Require Gateway API for New Traffic Routing
     policies.kyverno.io/category: Migration
     policies.kyverno.io/severity: medium
-    policies.kyverno.io/subject: Ingress, HTTPRoute
+    policies.kyverno.io/subject: Ingress
     policies.kyverno.io/description: >-
       Enforces Gateway API adoption for new ingress traffic routing.
       Supports progressive rollout by namespace using the label
       'migration-phase: gateway-api-required'. Can be switched from
       Audit to Enforce mode based on migration readiness.
+      Note: This policy discourages traditional Ingress resources in
+      labeled namespaces to encourage Gateway API adoption.
 spec:
   validationFailureAction: Audit  # Change to Enforce when ready
   background: false
   rules:
-    # Rule 1: Encourage Gateway API for namespaces ready for migration
+    # Recommend Gateway API for namespaces ready for migration
     - name: recommend-gateway-api
       match:
         any:
@@ -46,7 +48,7 @@ spec:
                     - gateway-api-required
       validate:
         message: >-
-          This namespace is labeled for Gateway API migration.
+          ⚠️  This namespace is labeled for Gateway API migration.
           Traditional Ingress resources are discouraged.
           
           Please use Gateway API resources instead:
@@ -56,28 +58,10 @@ spec:
           
           Learn more: https://gateway-api.sigs.k8s.io/
           
-          Current validationFailureAction: {{ validationFailureAction }}
-          (This can be changed to Enforce when ready)
+          Note: This policy is currently in Audit mode.
+          It can be changed to Enforce mode when ready.
         pattern:
           spec:
             # This pattern will fail for traditional Ingress
             # forcing consideration of Gateway API
             X-gateway-api-migration: "required"
-    
-    # Rule 2: Allow Gateway API resources (always pass)
-    - name: allow-gateway-api-resources
-      match:
-        any:
-        - resources:
-            kinds:
-              - HTTPRoute
-              - TCPRoute
-              - TLSRoute
-              - UDPRoute
-              - GRPCRoute
-      validate:
-        message: >-
-          Gateway API resource approved.
-          Resource: {{ request.object.kind }}/{{ request.object.metadata.name }}
-        pattern:
-          kind: "{{ request.object.kind }}"
