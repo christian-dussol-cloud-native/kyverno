@@ -53,8 +53,11 @@ kubectl apply -f tests/test-ingress-nginx.yaml
 # View all reports
 kubectl get policyreport -n default
 
-# Detailed view of violations
-kubectl get policyreport -n default -o wide
+# View violation messages
+kubectl describe policyreport -n default
+
+# Or view specific report (replace UUID with actual report name)
+kubectl describe policyreport <REPORT-UUID> -n default
 ```
 
 **Expected result:**
@@ -328,12 +331,7 @@ After deploying policies, view results:
 kubectl get policyreport -A
 
 # View detailed report for a namespace
-kubectl get policyreport -n default -o yaml
-
-# Count violations by type
-kubectl get policyreport -A -o yaml | \
-  grep -E "(result:)" | \
-  sort | uniq -c
+kubectl describe policyreport -n default
 ```
 
 ## 🔄 Progressive Rollout Strategy
