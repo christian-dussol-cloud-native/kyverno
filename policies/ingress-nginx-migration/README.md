@@ -99,8 +99,8 @@ kubectl apply -f policies/detect-ingress-nginx.yaml
 # View policy reports
 kubectl get policyreport -A
 
-# Detailed view of violations
-kubectl get policyreport -A -o wide
+# View violation messages
+kubectl describe policyreport -A
 ```
 
 ## 📁 Repository Structure
@@ -232,7 +232,7 @@ After deploying policies, view results:
 kubectl get policyreport -A
 
 # View detailed report for a namespace
-kubectl get policyreport -n default -o yaml
+kubectl describe policyreport -n default
 
 ## 🔄 Progressive Rollout Strategy
 
