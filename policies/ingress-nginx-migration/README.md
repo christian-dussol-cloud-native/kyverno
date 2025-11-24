@@ -82,9 +82,9 @@ Automated detection and governance for migrating from Ingress NGINX to Gateway A
 ### Step 1: Install Kyverno
 
 ```bash
-helm repo add kyverno https://kyverno.github.io/kyverno/
-helm repo update
-helm install kyverno kyverno/kyverno
+   helm repo add kyverno https://kyverno.github.io/kyverno/
+   helm repo update
+   helm install kyverno kyverno/kyverno
 ```
 
 ### Step 2: Deploy Detection Policy
@@ -115,12 +115,16 @@ kubectl get policyreport -A -o wide
 │
 ├── tests/
 │   ├── test-ingress-nginx.yaml        # Test ingress with nginx
-│   ├── test-ingress-gateway-api.yaml  # Test with Gateway API
-│   ├── test-ingress-other.yaml        # Test with other controller
-│   └── test-httproute.yaml            # Test Gateway API HTTPRoute
+│   ├── test-ingress-other.yaml        # Test with other controllers
+│   └── test-httproute.yaml            # Gateway API example (optional)
 │
+├── TESTING_GUIDE.md                   # Detailed testing instructions
 └── README.md
 ```
+
+**Note on test files:**
+- `test-ingress-nginx.yaml` and `test-ingress-other.yaml` - Essential for testing policies (no dependencies)
+- `test-httproute.yaml` - Optional Gateway API example (requires Gateway API CRDs)
 
 ## 🧪 Testing the Policies
 
@@ -157,15 +161,54 @@ kubectl apply -f policies/audit-all-ingress.yaml
 # Deploy test ingresses of different types
 kubectl apply -f tests/test-ingress-nginx.yaml
 kubectl apply -f tests/test-ingress-other.yaml
-kubectl apply -f tests/test-httproute.yaml
 
 # View categorized results
 kubectl get policyreport -n default -o yaml | grep "Category:"
 
-# Expected: Reports showing nginx-ingress, gateway-api, and other-controller
+# Expected: Reports showing nginx-ingress and other-controller categories
 ```
 
 ### Test 4: Enforce Gateway API
+
+```bash
+# Deploy enforcement policy in Audit mode first
+kubectl apply -f policies/require-gateway-api.yaml
+
+# Try creating traditional Ingress
+kubectl apply -f tests/test-ingress-nginx.yaml
+
+# Check warnings in policy report
+kubectl get policyreport -n default
+
+# Expected: Audit report recommending Gateway API
+```
+
+## 🌐 Optional: Testing Gateway API (HTTPRoute)
+
+The repository includes an example Gateway API HTTPRoute in `tests/test-httproute.yaml`. This is **optional** and demonstrates what the migration target looks like.
+
+**Prerequisites:** Gateway API CRDs must be installed
+
+**To test Gateway API resources:**
+
+```bash
+# 1. Install Gateway API CRDs (if not already installed)
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+
+# 2. Wait for CRDs to be ready
+kubectl wait --for condition=established --timeout=60s crd/gateways.gateway.networking.k8s.io
+kubectl wait --for condition=established --timeout=60s crd/httproutes.gateway.networking.k8s.io
+
+# 3. Test HTTPRoute example
+kubectl apply -f tests/test-httproute.yaml
+
+# 4. View the Gateway API resources
+kubectl get gateway,httproute -n default
+```
+
+**Note:** The 4 core Kyverno policies work perfectly without Gateway API CRDs. The HTTPRoute test is purely educational to show the recommended migration target.
+
+## 🔄 Progressive Rollout Strategy
 
 ```bash
 # Deploy enforcement policy in Audit mode first
@@ -190,6 +233,44 @@ kubectl get policyreport -A
 
 # View detailed report for a namespace
 kubectl get policyreport -n default -o yaml
+
+## 🔄 Progressive Rollout Strategy
+
+### Phase 1: Detection (Week 1)
+```bash
+# Deploy detection policy
+kubectl apply -f policies/detect-ingress-nginx.yaml
+
+# Inventory your usage
+kubectl get policyreport -A
+```
+
+### Phase 2: Audit (Week 2-3)
+```bash
+# Deploy comprehensive audit
+kubectl apply -f policies/audit-all-ingress.yaml
+
+# Analyze all ingress types
+kubectl get policyreport -A -o yaml | grep "Category:"
+```
+
+### Phase 3: Prevention (Week 4+)
+```bash
+# Block new Ingress NGINX resources
+kubectl apply -f policies/block-new-ingress-nginx.yaml
+
+# Existing resources still work, new ones blocked
+```
+
+### Phase 4: Enforcement (After migration)
+```bash
+# Enforce Gateway API for new resources
+kubectl apply -f policies/require-gateway-api.yaml
+
+# Switch to Enforce mode when ready
+kubectl patch clusterpolicy require-gateway-api \
+  --type='json' \
+  -p='[{"op": "replace", "path": "/spec/validationFailureAction", "value":"Enforce"}]'
 ```
 
 ## 📖 Resources
@@ -201,3 +282,5 @@ kubectl get policyreport -n default -o yaml
 **Migration Guides:**
 - [Migrating from Ingress to Gateway API](https://gateway-api.sigs.k8s.io/guides/migrating-from-ingress/)
 - [Kyverno Documentation](https://kyverno.io/docs/)
+
+**March 2026 deadline - Time to act is now**

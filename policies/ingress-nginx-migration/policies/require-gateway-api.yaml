@@ -48,7 +48,7 @@ spec:
                     - gateway-api-required
       validate:
         message: >-
-          ⚠️  This namespace is labeled for Gateway API migration.
+          This namespace is labeled for Gateway API migration.
           Traditional Ingress resources are discouraged.
           
           Please use Gateway API resources instead:
