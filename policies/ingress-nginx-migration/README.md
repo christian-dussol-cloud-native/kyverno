@@ -233,6 +233,7 @@ kubectl get policyreport -A
 
 # View detailed report for a namespace
 kubectl describe policyreport -n default
+```
 
 ## 🔄 Progressive Rollout Strategy
 
