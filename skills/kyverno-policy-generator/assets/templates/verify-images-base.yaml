@@ -1,0 +1,62 @@
+# Template: VerifyImages Policy
+# Usage: Verify container image signatures and attestations (supply chain security)
+# Kyverno Skills — https://github.com/christian-dussol-cloud-native/kyverno/skills
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: POLICY_NAME
+  annotations:
+    policies.kyverno.io/title: POLICY_TITLE
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: "1.7.0"
+    policies.kyverno.io/description: >-
+      DESCRIPTION
+  labels:
+    app.kubernetes.io/managed-by: kyverno-skills
+    kyverno-skills/type: verifyImages
+spec:
+  # Image verification is typically enforced (not just audit)
+  validationFailureAction: Enforce
+  # verifyImages only works at admission time
+  background: false
+  rules:
+    - name: RULE_NAME
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        # Option 1: Verify with cosign public key
+        - imageReferences:
+            - "registry.company.com/*"
+          attestors:
+            - count: 1
+              entries:
+                - keys:
+                    publicKeys: |-
+                      -----BEGIN PUBLIC KEY-----
+                      YOUR_COSIGN_PUBLIC_KEY_HERE
+                      -----END PUBLIC KEY-----
+        # Option 2: Keyless verification (Sigstore/Fulcio)
+        # - imageReferences:
+        #     - "ghcr.io/company/*"
+        #   attestors:
+        #     - entries:
+        #         - keyless:
+        #             issuer: "https://token.actions.githubusercontent.com"
+        #             subject: "https://github.com/company/*"
+        #             rekor:
+        #               url: "https://rekor.sigstore.dev"
+        # Option 3: Verify SLSA attestation
+        # - imageReferences:
+        #     - "registry.company.com/*"
+        #   attestations:
+        #     - type: "https://slsa.dev/provenance/v0.2"
+        #       conditions:
+        #         - all:
+        #             - key: "{{ builder.id }}"
+        #               operator: Equals
+        #               value: "https://github.com/slsa-framework/slsa-github-generator"

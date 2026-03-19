@@ -1,0 +1,48 @@
+# Template: Generate Policy
+# Usage: Auto-create resources when trigger conditions are met
+# Kyverno Skills — https://github.com/christian-dussol-cloud-native/kyverno/skills
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: POLICY_NAME
+  annotations:
+    policies.kyverno.io/title: POLICY_TITLE
+    policies.kyverno.io/category: CATEGORY
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Namespace
+    policies.kyverno.io/minversion: "1.6.0"
+    policies.kyverno.io/description: >-
+      DESCRIPTION
+  labels:
+    app.kubernetes.io/managed-by: kyverno-skills
+    kyverno-skills/type: generate
+spec:
+  rules:
+    - name: RULE_NAME
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              # Optional: match by label
+              # selector:
+              #   matchLabels:
+              #     environment: prod
+      generate:
+        # synchronize: true keeps the resource in sync with the policy
+        # If the policy is updated, generated resources are updated too
+        synchronize: true
+        apiVersion: v1
+        kind: ResourceQuota
+        name: default-quota
+        # Use Kyverno variable for the new namespace name
+        namespace: "{{request.object.metadata.name}}"
+        data:
+          spec:
+            hard:
+              requests.cpu: "4"
+              requests.memory: "8Gi"
+              limits.cpu: "8"
+              limits.memory: "16Gi"
+              persistentvolumeclaims: "10"
+              pods: "20"

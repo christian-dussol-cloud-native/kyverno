@@ -1,0 +1,69 @@
+# Template: Chainsaw Test for Kyverno Policy
+# Usage: End-to-end testing of generated policies
+# Docs: https://kyverno.github.io/chainsaw/
+# Kyverno Skills — https://github.com/christian-dussol-cloud-native/kyverno/skills
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: test-POLICY_NAME
+spec:
+  # Run test steps sequentially
+  concurrent: false
+  # Cleanup resources after test
+  skipDelete: false
+  # Timeouts per operation
+  timeouts:
+    apply: 30s
+    assert: 30s
+    error: 30s
+  steps:
+    # Step 1: Apply the Kyverno policy and switch to Enforce mode for testing
+    # NOTE: The policy defaults to Audit in production — Enforce is set here only for test validity
+    - name: apply-policy
+      try:
+        - apply:
+            file: POLICY_NAME.yaml
+        - patch:
+            resource:
+              apiVersion: kyverno.io/v1
+              kind: ClusterPolicy
+              metadata:
+                name: POLICY_NAME
+              spec:
+                validationFailureAction: Enforce
+      catch:
+        - events: {}
+
+    # Step 2: Test that a COMPLIANT resource is admitted
+    - name: compliant-resource-should-pass
+      try:
+        - apply:
+            file: test-pass.yaml
+      catch:
+        - podLogs: {}
+        - events: {}
+
+    # Step 3: Test that a NON-COMPLIANT resource is blocked
+    # NOTE: This step expects an error (the policy should reject the resource)
+    - name: non-compliant-resource-should-block
+      try:
+        - apply:
+            file: test-block.yaml
+            expect:
+              - check:
+                  ($error != null): true
+      catch:
+        - events: {}
+
+    # Optional Step 4: Verify PolicyReport was created (for Audit mode)
+    # Uncomment if testing in Audit mode instead of Enforce
+    # - name: check-policy-report
+    #   try:
+    #     - assert:
+    #         resource:
+    #           apiVersion: wgpolicyk8s.io/v1alpha2
+    #           kind: PolicyReport
+    #           metadata:
+    #             namespace: NAMESPACE
+    #           (results[?policy == 'POLICY_NAME']):
+    #             (length(@) > `0`): true

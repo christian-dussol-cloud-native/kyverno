@@ -1,0 +1,50 @@
+# Template: Mutate Policy
+# Usage: Automatically modify resources to ensure compliance
+# Kyverno Skills — https://github.com/christian-dussol-cloud-native/kyverno/skills
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: POLICY_NAME
+  annotations:
+    policies.kyverno.io/title: POLICY_TITLE
+    policies.kyverno.io/category: CATEGORY
+    policies.kyverno.io/severity: low  # Mutations are typically low severity
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: "1.6.0"
+    policies.kyverno.io/description: >-
+      DESCRIPTION
+  labels:
+    app.kubernetes.io/managed-by: kyverno-skills
+    kyverno-skills/type: mutate
+spec:
+  # Mutations only apply at admission time, not to existing resources
+  background: false
+  rules:
+    - name: RULE_NAME
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      mutate:
+        # Option 1: Strategic merge patch (most common)
+        patchStrategicMerge:
+          metadata:
+            labels:
+              # +() prefix = add only if not present
+              +(app.kubernetes.io/managed-by): "platform-team"
+          spec:
+            containers:
+              - (name): "*"  # Match all containers
+                resources:
+                  limits:
+                    +(cpu): "500m"
+                    +(memory): "256Mi"
+                  requests:
+                    +(cpu): "100m"
+                    +(memory): "128Mi"
+        # Option 2: JSON Patch (for precise modifications)
+        # patchesJson6902: |-
+        #   - op: add
+        #     path: /metadata/labels/injected-by
+        #     value: kyverno

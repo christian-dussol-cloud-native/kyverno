@@ -1,0 +1,54 @@
+# Template: Validate Policy
+# Usage: Enforce rules that block non-compliant resources
+# Kyverno Skills — https://github.com/christian-dussol-cloud-native/kyverno/skills
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: POLICY_NAME
+  annotations:
+    policies.kyverno.io/title: POLICY_TITLE
+    policies.kyverno.io/category: CATEGORY
+    policies.kyverno.io/severity: medium  # low | medium | high | critical
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: "1.6.0"
+    policies.kyverno.io/description: >-
+      DESCRIPTION
+  labels:
+    app.kubernetes.io/managed-by: kyverno-skills
+    kyverno-skills/type: validate
+spec:
+  # IMPORTANT: Default to Audit for safety. Only use Enforce when explicitly requested.
+  validationFailureAction: Audit
+  # Scan existing resources in the cluster
+  background: true
+  rules:
+    - name: RULE_NAME
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              # Optional: scope to specific namespaces
+              # namespaces:
+              #   - NAMESPACE
+      validate:
+        message: >-
+          ACTIONABLE_ERROR_MESSAGE
+        # Use 'pattern' for structural matching
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  requests:
+                    memory: "?*"
+                    cpu: "?*"
+                  limits:
+                    memory: "?*"
+                    cpu: "?*"
+        # Alternative: Use 'deny' with conditions for complex logic
+        # deny:
+        #   conditions:
+        #     any:
+        #       - key: "{{ element.field }}"
+        #         operator: NotEquals
+        #         value: "expected"
