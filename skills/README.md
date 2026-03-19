@@ -102,38 +102,94 @@ kind: ClusterPolicy
 metadata:
   name: disallow-latest-tag
   annotations:
-    policies.kyverno.io/title: "Disallow Latest Tag"
+    policies.kyverno.io/title: "Disallow Latest Image Tag in Production"
     policies.kyverno.io/category: "Best Practices"
     policies.kyverno.io/severity: "medium"
     policies.kyverno.io/subject: "Pod"
+    policies.kyverno.io/minversion: "1.6.0"
     policies.kyverno.io/description: >-
-      Containers must use a specific image tag, not 'latest'.
-      The 'latest' tag is mutable and can lead to unexpected
-      behavior across deployments.
+      The ':latest' image tag is mutable and leads to unpredictable deployments
+      because the underlying image can change silently. Untagged images also
+      resolve to latest implicitly. This policy blocks both ':latest' and
+      untagged images in production namespaces. Pin images to immutable
+      versions (e.g., nginx:1.27.0) for reproducible, auditable deployments.
   labels:
     app.kubernetes.io/managed-by: kyverno-skills
     kyverno-skills/type: validate
+    kyverno-skills/source: kyverno-policy-generator
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-image-tag
+    # Rule 1: Require a tag — untagged images resolve to :latest implicitly
+    - name: require-image-tag
       match:
         any:
           - resources:
               kinds:
                 - Pod
-              namespaces:
-                - production
+              namespaceSelector:
+                matchLabels:
+                  environment: production
       validate:
-        message: >-
-          Container '{{ element.name }}' uses the 'latest' tag.
-          Specify an explicit image tag for reproducible deployments.
-          See: https://kyverno.io/policies/best-practices/disallow-latest-tag/
-        pattern:
-          spec:
-            containers:
-              - image: "!*:latest"
+        message: "All containers must use an explicit image tag. Untagged images resolve to ':latest' implicitly and are not allowed in production. Use a pinned version (e.g., nginx:1.27.0)."
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.image }}"
+                    operator: NotEquals
+                    value: "*:*"
+          - list: "request.object.spec.initContainers || `[]`"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.image }}"
+                    operator: NotEquals
+                    value: "*:*"
+          - list: "request.object.spec.ephemeralContainers || `[]`"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.image }}"
+                    operator: NotEquals
+                    value: "*:*"
+
+    # Rule 2: Disallow the explicit :latest tag
+    - name: disallow-latest-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchLabels:
+                  environment: production
+      validate:
+        message: "The ':latest' image tag is not allowed in production. Pin all container images to a specific immutable version (e.g., nginx:1.27.0)."
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.image }}"
+                    operator: Equals
+                    value: "*:latest"
+          - list: "request.object.spec.initContainers || `[]`"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.image }}"
+                    operator: Equals
+                    value: "*:latest"
+          - list: "request.object.spec.ephemeralContainers || `[]`"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.image }}"
+                    operator: Equals
+                    value: "*:latest"
 ```
 
 **2. chainsaw-test.yaml**: applies the policy, tests a compliant pod (passes), tests a non-compliant pod (blocked).
