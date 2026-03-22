@@ -11,6 +11,7 @@ This repository contains Kyverno policies and educational materials focused on i
 - [Discover Kyverno Carousel](./carousel/) - Visual guide explaining Kyverno concepts and financial services use cases
 - [Policies](./policies/) - Example Kyverno policies for financial services
 - [Implementation Guides](./guides/) - Step-by-step guides for implementing Kyverno
+- [Claude Code Skills](./skills/) - Generate production-ready Kyverno policies from natural language using Claude Code
 
 ## Getting Started with Kyverno
 
