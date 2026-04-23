@@ -49,10 +49,6 @@ It's deliberately concise (~160 lines) because everything Claude reads consumes 
 window tokens. Detailed patterns, templates, and library indexes are delegated to
 `references/` and `assets/` — loaded only when needed.
 
-The `allowed-tools` field restricts what Claude can execute: `Bash(python *)`,
-`Bash(cat *)`, `Bash(bash *)`. This is a security boundary — Claude can run Python
-scripts and read files, but can't install packages or access the network.
-
 ---
 
 ### scripts/validate_policy.py — The quality gate
