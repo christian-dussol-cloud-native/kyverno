@@ -54,9 +54,78 @@ kyverno-policy-generator/
     └── chainsaw-test-base.yaml
 ```
 
-> More Skills are in development, including policy auditing and FinOps cost governance.
->
 > Want to understand how each file works under the hood? See [architecture.md](kyverno-policy-generator/references/architecture.md).
+
+---
+
+### kyverno-policy-auditor
+
+Audit existing Kyverno policies against best practices and production standards.
+
+**What it does:**
+- Audits single files or entire directories of Kyverno policies
+- Checks 8 dimensions: structure, annotations, labels, safe defaults, autogen, pattern quality, message quality, test coverage
+- Produces a conformity report with scores and actionable remediation steps
+- Automatically invokes `kyverno-policy-generator` when tests are missing (cross-skill composition)
+- Supports `--strict` mode for CI/CD and `--format json` for automation
+
+**What's inside:**
+
+```
+kyverno-policy-auditor/
+├── SKILL.md                           # 4-step audit workflow
+├── scripts/
+│   └── audit_policy.py                # 8-dimension audit engine
+├── references/
+│   ├── audit-criteria.md              # Scoring rules per dimension
+│   ├── common-issues.md               # Frequency-ranked findings
+│   ├── remediation-patterns.md        # YAML fix snippets
+│   └── architecture.md                # Design decisions
+└── examples/
+    ├── good-policy.yaml               # Well-structured (score 6-7/8)
+    ├── bad-policy.yaml                # Generic LLM output (score 1/8)
+    ├── medium-policy.yaml             # Missing annotations (score 4-5/8)
+    └── mutate-policy.yaml             # Mutate policy (score 5-6/8)
+```
+
+**Test the auditor with the included examples:**
+
+```bash
+# Install the Skill
+cp -r kyverno-policy-auditor ~/.claude/skills/
+
+# Launch Claude Code
+claude
+
+# Try these prompts:
+> "Audit the policy in kyverno-policy-auditor/examples/bad-policy.yaml"
+> "Audit all policies in kyverno-policy-auditor/examples/"
+> "Review good-policy.yaml and tell me what's missing"
+```
+
+**Example — auditing a generic LLM-generated policy:**
+
+```
+$ python3 audit_policy.py --file require-resource-limits.yaml
+
+🔍 Kyverno Policy Auditor
+==================================================
+📄 Policy: require-resource-limits
+📊 Score: 1/8
+
+  ✅ Structure
+  ❌ Annotations      No annotations defined
+  ⚠️ Labels           No labels defined
+  ⚠️ Safe Defaults    Enforce mode — ensure intentional
+  ⚠️ Autogen          match.resources without any: wrapper
+  ⚠️ Pattern Quality  "*" instead of "?*"
+  ⚠️ Message Quality  Message too short (15 chars)
+  ❌ Test Coverage     No test coverage
+
+❌ 2 critical issue(s) to fix.
+```
+
+> The generator creates. The auditor reviews. Together, they form a governance ecosystem.
 
 ---
 
