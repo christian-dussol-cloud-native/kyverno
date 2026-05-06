@@ -1,0 +1,69 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-cost-allocation-labels
+  labels:
+    app.kubernetes.io/managed-by: kyverno
+    kyverno.io/policy-type: validate
+    finops.kyverno.io/pattern: cost-labels
+  annotations:
+    policies.kyverno.io/title: Require Cost-Allocation Labels
+    policies.kyverno.io/category: FinOps
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Requires cost-allocation labels on all pods for accurate
+      FinOps reporting and chargeback. Without these labels,
+      costs cannot be attributed to teams or budgets.
+    finops.kyverno.io/service-name: REPLACE_SERVICE
+    finops.kyverno.io/charge-category: REPLACE_COST_CENTER
+    finops.kyverno.io/resource-type: Pod
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-team-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: >-
+          Pod '{{ request.object.metadata.name }}' is missing the required
+          'team' label. All pods must have a team label for cost attribution.
+          Add: metadata.labels.team
+        pattern:
+          metadata:
+            labels:
+              team: "?*"
+    - name: require-cost-center-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: >-
+          Pod '{{ request.object.metadata.name }}' is missing the required
+          'cost-center' label. All pods must have a cost-center label for
+          budget allocation. Add: metadata.labels.cost-center
+        pattern:
+          metadata:
+            labels:
+              cost-center: "?*"
+    - name: require-environment-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: >-
+          Pod '{{ request.object.metadata.name }}' is missing the required
+          'environment' label. All pods must have an environment label
+          (dev/staging/production). Add: metadata.labels.environment
+        pattern:
+          metadata:
+            labels:
+              environment: "?*"

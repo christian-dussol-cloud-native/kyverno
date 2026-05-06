@@ -1,0 +1,98 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-tiered-resource-limits
+  labels:
+    app.kubernetes.io/managed-by: kyverno
+    kyverno.io/policy-type: validate
+    finops.kyverno.io/pattern: tiered-limits
+  annotations:
+    policies.kyverno.io/title: Enforce Tiered Resource Limits
+    policies.kyverno.io/category: FinOps
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Enforces environment-specific resource limits to prevent
+      over-provisioning. Dev environments have stricter limits
+      than production to control cost drift.
+    finops.kyverno.io/service-name: REPLACE_SERVICE
+    finops.kyverno.io/charge-category: REPLACE_COST_CENTER
+    finops.kyverno.io/resource-type: Pod
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: limit-dev-resources
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchLabels:
+                  environment: dev
+      validate:
+        message: >-
+          Container '{{ element.name }}' in dev namespace exceeds resource limits.
+          Dev pods are limited to 2 CPU cores and 4Gi memory.
+          For higher limits, use a staging or production namespace.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.resources.requests.cpu || '0' }}"
+                    operator: GreaterThan
+                    value: "2000m"
+                  - key: "{{ element.resources.requests.memory || '0' }}"
+                    operator: GreaterThan
+                    value: "4Gi"
+    - name: limit-staging-resources
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchLabels:
+                  environment: staging
+      validate:
+        message: >-
+          Container '{{ element.name }}' in staging namespace exceeds resource limits.
+          Staging pods are limited to 4 CPU cores and 8Gi memory.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.resources.requests.cpu || '0' }}"
+                    operator: GreaterThan
+                    value: "4000m"
+                  - key: "{{ element.resources.requests.memory || '0' }}"
+                    operator: GreaterThan
+                    value: "8Gi"
+    - name: limit-prod-resources
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchLabels:
+                  environment: production
+      validate:
+        message: >-
+          Container '{{ element.name }}' in production namespace exceeds resource limits.
+          Production pods are limited to 8 CPU cores and 16Gi memory.
+          For higher limits, add annotation finops.kyverno.io/justification.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.resources.requests.cpu || '0' }}"
+                    operator: GreaterThan
+                    value: "8000m"
+                  - key: "{{ request.object.metadata.annotations.\"finops.kyverno.io/justification\" || '' }}"
+                    operator: Equals
+                    value: ""

@@ -129,6 +129,100 @@ $ python3 audit_policy.py --file require-resource-limits.yaml
 
 ---
 
+### kyverno-finops-policies
+
+Generate Kyverno policies for FinOps cost governance on Kubernetes,
+based on real cost data from OpenCost.
+
+**What it does:**
+- Queries OpenCost MCP server for live cluster cost allocation data
+- Identifies over-provisioned namespaces, missing cost-allocation labels, and budget drift
+- Generates environment-tiered resource limits (dev / staging / prod)
+- Enforces cost-allocation labels (team, cost-center, environment, service)
+- Guards against over-provisioning with justification annotations
+- Validates with `finops_analyze.py`: tier consistency, thresholds, FOCUS™ compliance, cost estimate
+- Automatically invokes `kyverno-policy-generator` to create Chainsaw tests
+- Then invokes `kyverno-policy-auditor` to validate the complete deliverable
+
+**Prerequisite:** OpenCost MCP server connected to Claude Code (see setup below).
+
+**What's inside:**
+
+```
+kyverno-finops-policies/
+├── SKILL.md                           # 5-step FinOps governance workflow
+├── scripts/
+│   └── finops_analyze.py              # Parameter validator + cost estimator
+├── references/
+│   ├── finops-patterns.md             # 5 governance patterns
+│   ├── focus-mapping.md               # FOCUS™ specification mapping
+│   ├── common-waste-patterns.md       # Typical waste scenarios
+│   └── architecture.md                # Design decisions
+└── assets/templates/
+    ├── tiered-limits-base.yaml        # Environment-aware resource limits
+    ├── cost-labels-base.yaml          # Cost-allocation label enforcement
+    ├── overprovision-guard-base.yaml   # Over-provisioning guard with justification
+    └── finops-report-template.md      # Report template
+```
+
+**Test the FinOps Skill with OpenCost (live cost data):**
+
+For the complete demo, you'll need Minikube + OpenCost. The `finops-demo-scripts/`
+folder includes scripts to set up and tear down the demo environment.
+
+```bash
+cd finops-demo-scripts/
+chmod u+x *.sh
+
+./01-start-minikube.sh         # Start Minikube with adequate resources
+./02-install-opencost.sh       # Install Prometheus + OpenCost
+./03-deploy-demo-workloads.sh  # Deploy sample pods to generate cost data
+./03b-wait-for-data.sh         # Poll OpenCost API — exits when data is ready
+./04-connect-mcp.sh            # Port-forward + register MCP with Claude Code
+```
+
+In a new terminal, install all 3 Skills and test the full loop:
+
+```bash
+cp -r kyverno-policy-generator kyverno-policy-auditor kyverno-finops-policies ~/.claude/skills/
+
+claude
+> "Analyze my cluster costs and suggest governance policies"
+```
+
+Expected behavior:
+1. The FinOps Skill detects the OpenCost MCP and queries cost allocation data
+2. It identifies waste in dev-team-a (over-provisioned pod)
+3. It generates targeted FinOps policies based on actual usage
+4. It automatically invokes `kyverno-policy-generator` to create Chainsaw tests
+5. It then invokes `kyverno-policy-auditor` to validate the complete deliverable
+6. Final output: policies, tests, and a FinOps governance report
+
+When done:
+
+```bash
+./05-cleanup.sh                # Remove resources, optionally stop Minikube
+```
+
+See `finops-demo-scripts/README.md` for full details on each script.
+
+### Troubleshooting
+
+**"No cost data" error** → OpenCost hasn't collected enough data yet. Wait 20 minutes.
+
+**MCP server not detected** → Verify `kubectl port-forward` is still running (script 04
+keeps it alive in the background). Check `claude mcp list` shows opencost as healthy.
+
+**Wrong Skill triggered** → If the auditor triggers when you wanted FinOps, the
+descriptions need refinement. Try: `> "Use kyverno-finops-policies to..."`
+
+**OpenCost pod not ready** → Increase Minikube resources:
+`./05-cleanup.sh` then `minikube start --memory 6144 --cpus 4` and re-run scripts 02-04.
+
+> The generator creates. The auditor reviews. The FinOps Skill connects to the real world. Three Skills. One governance ecosystem.
+
+---
+
 ## Quick Start
 
 ### Claude Code (Terminal)
@@ -138,15 +232,19 @@ $ python3 audit_policy.py --file require-resource-limits.yaml
 git clone https://github.com/christian-dussol-cloud-native/kyverno/
 cd kyverno/skills
 
-# Install the Skill
+# Install all 3 Skills
 mkdir -p ~/.claude/skills/
 cp -r kyverno-policy-generator ~/.claude/skills/
+cp -r kyverno-policy-auditor ~/.claude/skills/
+cp -r kyverno-finops-policies ~/.claude/skills/
 
 # Launch Claude Code in your terminal
 claude
 
-# The Skill triggers automatically on relevant prompts
+# The Skills trigger automatically on relevant prompts
 > "Block any container using the latest image tag in production"
+> "Audit all policies in my policies/ folder"
+> "Analyze my cluster costs and suggest governance policies"
 ```
 
 ### Claude.ai (Web/Desktop)
@@ -274,13 +372,13 @@ Once your policy is generated, use the scripts at the root of this repository to
 ### 0. Make scripts executable
 
 ```bash
-chmod u+x ./scripts/*.sh
+chmod u+x ../scripts/*.sh
 ```
 
 ### 1. Create a Minikube cluster
 
 ```bash
-./scripts/minikube-cluster.sh
+../scripts/minikube-cluster.sh
 ```
 
 Creates a local `kyverno-lab` cluster (2 CPU, 4 GB RAM) using Docker as the driver.
@@ -288,7 +386,7 @@ Creates a local `kyverno-lab` cluster (2 CPU, 4 GB RAM) using Docker as the driv
 ### 2. Install Kyverno
 
 ```bash
-./scripts/install-kyverno.sh
+../scripts/install-kyverno.sh
 ```
 
 Installs Kyverno via Helm and waits for all controllers to be ready.
@@ -325,7 +423,7 @@ kubectl get policyreport -A
 When you're done, remove everything with:
 
 ```bash
-./scripts/cleanup.sh
+../scripts/cleanup.sh
 ```
 
 Uninstalls Kyverno and optionally deletes the Minikube cluster.
@@ -358,8 +456,11 @@ Every guard rail in this Skill exists because I hit the wall it prevents, polici
 
 - Claude Code, Claude.ai, or Claude API
 - Python 3.8+ with PyYAML (`pip install pyyaml`)
+- Kyverno **v1.10+** (tested on v1.15.2) — required for `foreach` + `deny` rules
 - Optional: [Kyverno CLI](https://kyverno.io/docs/kyverno-cli/) for local testing
 - Optional: [Chainsaw](https://kyverno.github.io/chainsaw/) for E2E testing
+
+> **FinOps Skill only:** OpenCost v1.120+ with MCP server enabled, Prometheus (tested with `prometheus-community/prometheus` Helm chart)
 
 ---
 

@@ -1,0 +1,71 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: guard-over-provisioning
+  labels:
+    app.kubernetes.io/managed-by: kyverno
+    kyverno.io/policy-type: validate
+    finops.kyverno.io/pattern: overprovision-guard
+  annotations:
+    policies.kyverno.io/title: Guard Against Over-Provisioning
+    policies.kyverno.io/category: FinOps
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Blocks pods requesting more than 4 CPU cores or 8Gi memory
+      unless a justification annotation is provided. This prevents
+      accidental over-provisioning while allowing justified exceptions
+      for workloads like ML training or data processing.
+    finops.kyverno.io/service-name: REPLACE_SERVICE
+    finops.kyverno.io/charge-category: REPLACE_COST_CENTER
+    finops.kyverno.io/resource-type: Pod
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: guard-cpu-over-provisioning
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: >-
+          Container '{{ element.name }}' requests more than 4 CPU cores
+          ({{ element.resources.requests.cpu }}). High CPU requests require
+          a justification annotation. Add:
+          finops.kyverno.io/justification: "<reason for high resource request>"
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.resources.requests.cpu || '0' }}"
+                    operator: GreaterThan
+                    value: "4000m"
+                  - key: "{{ request.object.metadata.annotations.\"finops.kyverno.io/justification\" || '' }}"
+                    operator: Equals
+                    value: ""
+    - name: guard-memory-over-provisioning
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: >-
+          Container '{{ element.name }}' requests more than 8Gi memory
+          ({{ element.resources.requests.memory }}). High memory requests
+          require a justification annotation. Add:
+          finops.kyverno.io/justification: "<reason for high resource request>"
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.resources.requests.memory || '0' }}"
+                    operator: GreaterThan
+                    value: "8Gi"
+                  - key: "{{ request.object.metadata.annotations.\"finops.kyverno.io/justification\" || '' }}"
+                    operator: Equals
+                    value: ""
