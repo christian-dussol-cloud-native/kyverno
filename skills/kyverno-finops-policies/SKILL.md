@@ -71,6 +71,11 @@ based on findings:
 - **Missing labels** → use `assets/templates/cost-labels-base.yaml`
 - **Need justification workflow** → use `assets/templates/overprovision-guard-base.yaml`
 
+Before writing any file, run `pwd` to determine the current working directory.
+Save all generated policy YAML files to `<cwd>/generated/<policy-name>.yaml`,
+where `<cwd>` is the result of `pwd`. Never write files relative to the skill
+directory (`~/.claude/skills/`).
+
 Generate policy YAML with:
 - Environment-aware rules (different limits for dev/staging/prod)
 - FOCUS™ compliant cost-allocation annotations (see `references/focus-mapping.md`)
@@ -79,7 +84,7 @@ Generate policy YAML with:
 
 Run validation:
 ```bash
-python3 scripts/finops_analyze.py --file <policy.yaml>
+python3 ~/.claude/skills/kyverno-finops-policies/scripts/finops_analyze.py --file <cwd>/generated/<policy-name>.yaml
 ```
 
 The script validates:
@@ -96,8 +101,10 @@ The script validates:
 After generating FinOps policies, invoke the other Skills automatically in this order:
 
 - **First, invoke `kyverno-policy-generator`** to create Chainsaw tests
-  for each generated FinOps policy. This builds the complete deliverable
-  (policy + tests) before validation.
+  for each generated FinOps policy. Instruct the generator to write all
+  test files to `<cwd>/generated/` (current working directory, not the
+  skill directory). This builds the complete deliverable (policy + tests)
+  before validation.
 
 - **Then, invoke `kyverno-policy-auditor`** to validate the complete deliverable
   against the 8 audit dimensions (structure, annotations, labels, safe defaults,
@@ -110,14 +117,15 @@ Steps 3 → 4 → 5 run as a single uninterrupted flow. Only produce the final r
 
 Generate a FinOps governance report and **save it as a markdown file**.
 
-Read the template from `assets/templates/finops-report-template.md`, fill in the
-sections with data collected from previous steps, and write the result to:
+Read the template from `~/.claude/skills/kyverno-finops-policies/assets/templates/finops-report-template.md`,
+fill in the sections with data collected from previous steps, and write the result to:
 
 ```
-generated/finops-governance-report.md
+<cwd>/generated/finops-governance-report.md
 ```
 
-Use the `Write` tool to create the file. Do not just summarize in the chat —
+where `<cwd>` is the current working directory (result of `pwd`).
+Use the `Write` tool with the absolute path. Do not just summarize in the chat —
 the file is part of the Skill's deliverable and must be inspectable, version-controllable,
 and ready for GitOps.
 
@@ -133,10 +141,23 @@ The report must contain:
 
 ## Output Format
 
+ALL artifacts are written to `<cwd>/generated/` where `<cwd>` is the
+**current working directory** (result of `pwd`) — NEVER inside the skill
+directory at `~/.claude/skills/`. Run `pwd` at the start of every session.
+
+```
+<cwd>/generated/
+├── <policy-name>.yaml              # ClusterPolicy (one file per policy)
+├── chainsaw-test-<policy-name>.yaml # Chainsaw test suite
+├── test-pass-<policy-name>.yaml    # Passing resource fixture
+├── test-block-<policy-name>.yaml   # Blocking resource fixture
+└── finops-governance-report.md    # Final FinOps report
+```
+
 ALWAYS produce:
-1. FinOps governance report (with findings and savings estimate)
-2. Policy YAML file(s)
-3. Chainsaw tests (via kyverno-policy-generator)
+1. Policy YAML file(s) → `<cwd>/generated/<policy-name>.yaml`
+2. Chainsaw tests → `<cwd>/generated/` (via kyverno-policy-generator)
+3. FinOps governance report → `<cwd>/generated/finops-governance-report.md`
 
 ## Examples
 
