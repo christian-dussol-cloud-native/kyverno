@@ -108,7 +108,20 @@ Steps 3 → 4 → 5 run as a single uninterrupted flow. Only produce the final r
 
 ### Step 5: Produce Report
 
-Generate a FinOps governance report using `assets/templates/finops-report-template.md`:
+Generate a FinOps governance report and **save it as a markdown file**.
+
+Read the template from `assets/templates/finops-report-template.md`, fill in the
+sections with data collected from previous steps, and write the result to:
+
+```
+generated/finops-governance-report.md
+```
+
+Use the `Write` tool to create the file. Do not just summarize in the chat —
+the file is part of the Skill's deliverable and must be inspectable, version-controllable,
+and ready for GitOps.
+
+The report must contain:
 
 - Current cost state (from OpenCost data)
 - Top findings (over-provisioned namespaces, missing labels)
